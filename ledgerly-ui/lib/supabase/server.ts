@@ -15,19 +15,23 @@ export async function createClient() {
 
   return createServerClient(supabaseUrl, supabaseAnonKey, {
     cookies: {
-      get(name) {
+      get(name: string) {
         return cookieStore.get(name)?.value;
       },
-      set(name, value, options) {
+      set(
+        name: string,
+        value: string,
+        options: Record<string, unknown>
+      ) {
         try {
-          cookieStore.set({ name, value, ...options });
+          cookieStore.set({ name, value, ...(options as any) });
         } catch {
           // Ignore attempts to set cookies in server components.
         }
       },
-      remove(name, options) {
+      remove(name: string, options: Record<string, unknown>) {
         try {
-          cookieStore.set({ name, value: "", ...options });
+          cookieStore.set({ name, value: "", ...(options as any) });
         } catch {
           // Ignore attempts to remove cookies in server components.
         }
