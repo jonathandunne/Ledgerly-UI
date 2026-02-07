@@ -3,9 +3,10 @@ import { Configuration, PlaidApi, PlaidEnvironments } from "plaid";
 
 export const runtime = "nodejs";
 
-const env = process.env.PLAID_ENV ?? "sandbox";
+const env = (process.env.PLAID_ENV ?? "sandbox") as keyof typeof PlaidEnvironments;
+
 const configuration = new Configuration({
-  basePath: (PlaidEnvironments as any)[env],
+  basePath: PlaidEnvironments[env],
   baseOptions: {
     headers: {
       "PLAID-CLIENT-ID": process.env.PLAID_CLIENT_ID ?? "",
@@ -13,12 +14,14 @@ const configuration = new Configuration({
     },
   },
 });
+
 const client = new PlaidApi(configuration);
 
 export async function POST(request: Request) {
   try {
     const body = await request.json();
     const { public_token } = body ?? {};
+
     if (!public_token) {
       return NextResponse.json({ error: "public_token missing" }, { status: 400 });
     }
@@ -26,7 +29,10 @@ export async function POST(request: Request) {
     const resp = await client.itemPublicTokenExchange({ public_token });
     return NextResponse.json(resp.data);
   } catch (err: any) {
-    console.error("Plaid itemPublicTokenExchange error:", err?.response?.data ?? err.message ?? err);
+    console.error(
+      "Plaid itemPublicTokenExchange error:",
+      err?.response?.data ?? err?.message ?? err
+    );
     return NextResponse.json({ error: "failed to exchange token" }, { status: 500 });
   }
 }
