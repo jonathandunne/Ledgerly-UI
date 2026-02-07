@@ -17,6 +17,7 @@ export function ProfileMenu({ email }: ProfileMenuProps) {
   const [userId, setUserId] = useState<string | null>(null);
   const menuRef = useRef<HTMLDivElement | null>(null);
   const router = useRouter();
+  const apiBase = process.env.NEXT_PUBLIC_BACKEND_URL ?? "http://localhost:8000/";
 
   // Fetch current user and link token from backend when component mounts
   useEffect(() => {
@@ -29,7 +30,15 @@ export function ProfileMenu({ email }: ProfileMenuProps) {
         }
 
         // Fetch link token
-        const response = await fetch("/api/plaid/create-link-token");
+        if (!user?.id) {
+          console.error("No user found; cannot create link token");
+          return;
+        }
+        const response = await fetch(`${apiBase}api/create-link-token/`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ user_id: user.id }),
+        });
         if (!response.ok) {
           const text = await response.text();
           console.error("create-link-token returned non-OK response:", response.status, text);
@@ -51,10 +60,14 @@ export function ProfileMenu({ email }: ProfileMenuProps) {
     onSuccess: async (public_token, metadata) => {
       try {
         // Send public_token to your backend to exchange for access_token
-        const response = await fetch("/api/plaid/exchange-token", {
+        if (!userId) {
+          console.error("No user found; cannot exchange token");
+          return;
+        }
+        const response = await fetch(`${apiBase}api/exchange-public-token/`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ public_token }),
+          body: JSON.stringify({ user_id: userId, public_token }),
         });
         if (!response.ok) {
           const text = await response.text();
@@ -62,21 +75,24 @@ export function ProfileMenu({ email }: ProfileMenuProps) {
           return;
         }
         const data = await response.json();
-
+        console.log("exchange-token response:", data);
         // Store access token in Supabase
-        if (userId && data.access_token) {
+        if (userId && data.access_token && data.item_id) {
           const { error: insertError } = await supabaseBrowser
-            .from("plaid_connections")
-            .insert({
-              user_id: userId,
-              access_token: data.access_token,
-              public_token: public_token,
-            });
+            .from("user_plaid_items")
+            .insert([
+              {
+                user_id: userId,
+                access_token: data.access_token,
+                item_id: data.item_id,
+              },
+            ]);
 
           if (insertError) {
             console.error("Error storing Plaid token in Supabase:", insertError);
             return;
           }
+
           console.log("Plaid token successfully stored in Supabase");
         }
         console.log("Plaid connected successfully!", data);
