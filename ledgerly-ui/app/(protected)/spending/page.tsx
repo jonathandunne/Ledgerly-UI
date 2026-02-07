@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useMemo } from "react";
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from "recharts";
 import { useSpending } from "@/components/spending/SpendingProvider";
 import { TRANSACTION_CATEGORIES } from "@/constants/categories";
 
@@ -28,6 +29,36 @@ export default function SpendingPage() {
     if (loading) return "Loading transactions...";
     return `${transactions.length} recurring transaction${transactions.length !== 1 ? "s" : ""} detected from your linked accounts.`;
   }, [loading, error, transactions.length]);
+
+  const chartData = useMemo(() => {
+    const spendingByCategory: Record<number, { name: string; icon: string; amount: number }> = {};
+
+    transactions.forEach((tx) => {
+      const categoryId = selectedCategories[tx.stream_id] ?? 50;
+      const category = TRANSACTION_CATEGORIES.find((c) => c.id === categoryId);
+      
+      if (category) {
+        if (!spendingByCategory[categoryId]) {
+          spendingByCategory[categoryId] = {
+            name: category.name,
+            icon: category.icon,
+            amount: 0,
+          };
+        }
+        // Only count outflows (positive amounts)
+        if (tx.last_amount.amount > 0) {
+          spendingByCategory[categoryId].amount += tx.last_amount.amount;
+        }
+      }
+    });
+
+    return Object.values(spendingByCategory)
+      .sort((a, b) => b.amount - a.amount)
+      .map((item) => ({
+        name: `${item.icon} ${item.name}`,
+        amount: parseFloat(item.amount.toFixed(2)),
+      }));
+  }, [transactions, selectedCategories]);
 
   if (loading) {
     return (
@@ -69,6 +100,40 @@ export default function SpendingPage() {
       {error && (
         <div className="rounded-2xl border border-red-500/30 bg-red-50/50 p-4 text-sm text-red-700 dark:bg-red-500/10 dark:text-red-400">
           {error}
+        </div>
+      )}
+
+      {/* Spending by Category Chart */}
+      {chartData.length > 0 && (
+        <div className="rounded-2xl border border-white/20 bg-white/60 p-6 shadow-[0_20px_60px_-40px_rgba(15,23,42,0.6)] backdrop-blur-2xl dark:border-white/10 dark:bg-slate-950/40">
+          <h2 className="mb-6 text-lg font-semibold text-slate-900 dark:text-white">
+            Spending by Category
+          </h2>
+          <ResponsiveContainer width="100%" height={300}>
+            <BarChart data={chartData}>
+              <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.1)" />
+              <XAxis
+                dataKey="name"
+                tick={{ fontSize: 12 }}
+                className="text-slate-600 dark:text-slate-400"
+              />
+              <YAxis
+                tickFormatter={(value) => `$${(value / 1000).toFixed(0)}k`}
+                tick={{ fontSize: 12 }}
+                className="text-slate-600 dark:text-slate-400"
+              />
+              <Tooltip
+                formatter={(value) => (value !== undefined ? formatCurrency(Number(value)) : "")}
+                contentStyle={{
+                  backgroundColor: "rgba(15, 23, 42, 0.95)",
+                  border: "1px solid rgba(255, 255, 255, 0.2)",
+                  borderRadius: "0.75rem",
+                  color: "#f1f5f9",
+                }}
+              />
+              <Bar dataKey="amount" fill="#0ea5e9" radius={[8, 8, 0, 0]} />
+            </BarChart>
+          </ResponsiveContainer>
         </div>
       )}
 

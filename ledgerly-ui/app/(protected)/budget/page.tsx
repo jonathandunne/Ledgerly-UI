@@ -14,10 +14,31 @@ function BudgetForm() {
     const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
 
     useEffect(() => {
+        const id = searchParams.get("id");
         const amount = searchParams.get("amount");
-        if (amount) {
-            setTargetAmount(amount);
-        }
+
+        const fetchBudget = async () => {
+            if (id) {
+                setLoading(true);
+                const { data, error } = await supabaseBrowser
+                    .from("user_budgets")
+                    .select("*")
+                    .eq("id", id)
+                    .single();
+
+                if (data) {
+                    setGoalName(data.goal_name);
+                    setTargetAmount(data.target_amount.toString());
+                    setTargetDate(data.target_date);
+                    setLinkedCategory(data.linked_category);
+                }
+                setLoading(false);
+            } else if (amount) {
+                setTargetAmount(amount);
+            }
+        };
+
+        fetchBudget();
     }, [searchParams]);
 
     const handleSubmit = async (e: React.FormEvent) => {
@@ -32,26 +53,40 @@ function BudgetForm() {
                 throw new Error("You must be logged in to save a budget.");
             }
 
-            const { error } = await supabaseBrowser
-                .from("user_budgets")
-                .insert([
-                    {
-                        user_id: user.id,
-                        goal_name: goalName,
-                        target_amount: parseFloat(targetAmount),
-                        target_date: targetDate,
-                        linked_category: linkedCategory,
-                    },
-                ]);
+            const id = searchParams.get("id");
+            const payload = {
+                user_id: user.id,
+                goal_name: goalName,
+                target_amount: parseFloat(targetAmount),
+                target_date: targetDate,
+                linked_category: linkedCategory,
+            };
+
+            let error;
+
+            if (id) {
+                const { error: updateError } = await supabaseBrowser
+                    .from("user_budgets")
+                    .update(payload)
+                    .eq("id", id);
+                error = updateError;
+            } else {
+                const { error: insertError } = await supabaseBrowser
+                    .from("user_budgets")
+                    .insert([payload]);
+                error = insertError;
+            }
 
             if (error) throw error;
 
-            setMessage({ type: "success", text: "Budget saved successfully!" });
-            // Optional: Reset form
-            setGoalName("");
-            setTargetAmount("");
-            setTargetDate("");
-            setLinkedCategory("dining");
+            setMessage({ type: "success", text: id ? "Budget updated successfully!" : "Budget saved successfully!" });
+
+            if (!id) {
+                setGoalName("");
+                setTargetAmount("");
+                setTargetDate("");
+                setLinkedCategory("dining");
+            }
         } catch (error: any) {
             setMessage({ type: "error", text: error.message || "Failed to save budget." });
         } finally {
