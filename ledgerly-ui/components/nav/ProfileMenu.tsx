@@ -13,6 +13,7 @@ export function ProfileMenu({ email }: ProfileMenuProps) {
   const [open, setOpen] = useState(false);
   const [plaidConnected, setPlaidConnected] = useState(false);
   const [linkToken, setLinkToken] = useState<string | null>(null);
+  const [plaidOpen, setPlaidOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement | null>(null);
   const router = useRouter();
 
@@ -55,9 +56,16 @@ export function ProfileMenu({ email }: ProfileMenuProps) {
         const data = await response.json();
         console.log("Plaid connected successfully!", data);
         setPlaidConnected(true);
+        setPlaidOpen(false);
       } catch (error) {
         console.error("Error exchanging token:", error);
       }
+    },
+    onExit: (error, metadata) => {
+      if (error) {
+        console.error("Plaid exited with error:", error);
+      }
+      setPlaidOpen(false);
     },
   });
 
@@ -65,6 +73,13 @@ export function ProfileMenu({ email }: ProfileMenuProps) {
   useEffect(() => {
     console.log("Plaid linkToken:", linkToken, "ready:", ready);
   }, [linkToken, ready]);
+
+  useEffect(() => {
+    document.documentElement.classList.toggle("plaid-open", plaidOpen);
+    return () => {
+      document.documentElement.classList.remove("plaid-open");
+    };
+  }, [plaidOpen]);
 
   useEffect(() => {
     const handleClick = (event: MouseEvent) => {
@@ -92,6 +107,7 @@ export function ProfileMenu({ email }: ProfileMenuProps) {
       return;
     }
     if (ready) {
+      setPlaidOpen(true);
       openPlaid(); // Opens Plaid Link modal
     } else {
       console.log("Plaid Link not ready yet...");
