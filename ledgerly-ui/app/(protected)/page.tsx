@@ -1,8 +1,7 @@
 "use client";
 
 import Link from "next/link";
-
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { GlassGrid } from "@/components/glass/GlassGrid";
 import { GlassTile } from "@/components/glass/GlassTile";
 import { useNetWorth } from "@/components/networth/NetWorthProvider";
@@ -92,6 +91,7 @@ const tiles = [
 
 export default function ProtectedHomePage() {
   const { totalAssets, totalDebts, netWorth, error, loading } = useNetWorth();
+  const [budgetInput, setBudgetInput] = useState("");
 
   const netWorthStatus = useMemo(() => {
     if (loading) {
@@ -161,12 +161,14 @@ export default function ProtectedHomePage() {
               </span>
               <input
                 type="number"
+                value={budgetInput}
+                onChange={(e) => setBudgetInput(e.target.value)}
                 className="w-full rounded-xl border border-white/20 bg-white/50 py-2 pl-10 pr-3 text-sm text-slate-900 shadow-inner outline-none focus:border-sky-400/50 focus:ring-2 focus:ring-sky-400/20 dark:border-white/10 dark:bg-black/20 dark:text-white"
                 placeholder="0.00"
               />
             </div>
             <Link
-              href="/budget"
+              href={`/budget${budgetInput ? `?amount=${budgetInput}` : ""}`}
               className="flex h-9 w-9 items-center justify-center rounded-xl bg-sky-500/90 text-white shadow-lg shadow-sky-500/20 transition hover:bg-sky-500 hover:scale-105 active:scale-95 dark:bg-sky-500/80 dark:hover:bg-sky-400"
             >
               <svg
