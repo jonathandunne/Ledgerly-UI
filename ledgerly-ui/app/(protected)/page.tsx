@@ -6,6 +6,7 @@ import { supabaseBrowser } from "@/lib/supabase/client";
 import { GlassGrid } from "@/components/glass/GlassGrid";
 import { GlassTile } from "@/components/glass/GlassTile";
 import { useNetWorth } from "@/components/networth/NetWorthProvider";
+import { useCreditScore } from "@/components/credit/CreditScoreProvider";
 import { useSpending } from "@/components/spending/SpendingProvider";
 import { TRANSACTION_CATEGORIES } from "@/constants/categories";
 
@@ -24,23 +25,6 @@ function formatCurrency(value: number) {
 }
 
 const tiles = [
-  {
-    title: "Credit Score",
-    description: "Track score movement and impacts.",
-    href: "/credit-score",
-    icon: (
-      <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none">
-        <circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="2" />
-        <path
-          d="M12 7v5l3 3"
-          stroke="currentColor"
-          strokeWidth="2"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        />
-      </svg>
-    ),
-  },
   {
     title: "Upcoming Payments",
     description: "Stay ahead of due dates.",
@@ -91,6 +75,7 @@ const tiles = [
 
 export default function ProtectedHomePage() {
   const { totalAssets, totalDebts, netWorth, error, loading } = useNetWorth();
+  const { score, rating, error: creditError, loading: creditLoading } = useCreditScore();
   const { transactions, selectedCategories } = useSpending();
   const [budgetInput, setBudgetInput] = useState("");
   const [budgets, setBudgets] = useState<Budget[]>([]);
@@ -186,6 +171,45 @@ export default function ProtectedHomePage() {
         </p>
       </div>
       <GlassGrid>
+        <GlassTile
+          title="Credit score"
+          description="Latest score from Plaid."
+          icon={
+            <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none">
+              <circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="2" />
+              <path
+                d="M12 7v5l3 3"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            </svg>
+          }
+        >
+          {creditError ? (
+            <p className="text-sm text-rose-500">Unable to load score</p>
+          ) : (
+            <div className="space-y-2 text-sm text-slate-700 dark:text-slate-200">
+              <div className="flex items-center justify-between">
+                <span className="text-xs uppercase tracking-[0.2em] text-slate-500 dark:text-slate-400">
+                  Score
+                </span>
+                <span className="text-lg font-semibold text-slate-900 dark:text-white">
+                  {creditLoading || score === null ? "--" : score}
+                </span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-xs uppercase tracking-[0.2em] text-slate-500 dark:text-slate-400">
+                  Rating
+                </span>
+                <span className="font-semibold">
+                  {creditLoading || !rating ? "--" : rating}
+                </span>
+              </div>
+            </div>
+          )}
+        </GlassTile>
         <GlassTile
           title="Net worth"
           description="Assets minus debts from Plaid."
