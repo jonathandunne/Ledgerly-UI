@@ -14,13 +14,21 @@ export function ProfileMenu({ email }: ProfileMenuProps) {
   const [plaidConnected, setPlaidConnected] = useState(false);
   const [linkToken, setLinkToken] = useState<string | null>(null);
   const [plaidOpen, setPlaidOpen] = useState(false);
+  const [userId, setUserId] = useState<string | null>(null);
   const menuRef = useRef<HTMLDivElement | null>(null);
   const router = useRouter();
 
-  // Fetch link token from your backend when component mounts
+  // Fetch current user and link token from backend when component mounts
   useEffect(() => {
-    const fetchLinkToken = async () => {
+    const fetchUserAndToken = async () => {
       try {
+        // Get current user
+        const { data: { user } } = await supabaseBrowser.auth.getUser();
+        if (user) {
+          setUserId(user.id);
+        }
+
+        // Fetch link token
         const response = await fetch("/api/plaid/create-link-token");
         if (!response.ok) {
           const text = await response.text();
@@ -34,7 +42,7 @@ export function ProfileMenu({ email }: ProfileMenuProps) {
         console.error("Error fetching link token:", error);
       }
     };
-    fetchLinkToken();
+    fetchUserAndToken();
   }, []);
 
   // Plaid Link hook
@@ -54,6 +62,23 @@ export function ProfileMenu({ email }: ProfileMenuProps) {
           return;
         }
         const data = await response.json();
+
+        // Store access token in Supabase
+        if (userId && data.access_token) {
+          const { error: insertError } = await supabaseBrowser
+            .from("plaid_connections")
+            .insert({
+              user_id: userId,
+              access_token: data.access_token,
+              public_token: public_token,
+            });
+
+          if (insertError) {
+            console.error("Error storing Plaid token in Supabase:", insertError);
+            return;
+          }
+          console.log("Plaid token successfully stored in Supabase");
+        }
         console.log("Plaid connected successfully!", data);
         setPlaidConnected(true);
         setPlaidOpen(false);
