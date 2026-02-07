@@ -6,6 +6,7 @@ type GlassTileProps = {
   description?: string;
   metric?: string;
   icon?: ReactNode;
+  children?: ReactNode;
   href?: string;
   className?: string;
 };
@@ -15,6 +16,7 @@ export function GlassTile({
   description,
   metric,
   icon,
+  children,
   href,
   className = "",
 }: GlassTileProps) {
@@ -44,6 +46,7 @@ export function GlassTile({
             </p>
           ) : null}
         </div>
+        {children ? <div className="mt-auto">{children}</div> : null}
         {metric ? (
           <div className="mt-auto text-2xl font-semibold text-slate-900 dark:text-white">
             {metric}

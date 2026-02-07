@@ -1,5 +1,34 @@
+"use client";
+
+import { useEffect, useMemo, useState } from "react";
 import { GlassGrid } from "@/components/glass/GlassGrid";
 import { GlassTile } from "@/components/glass/GlassTile";
+import { supabaseBrowser } from "@/lib/supabase/client";
+
+type PlaidAccount = {
+  balances: {
+    available: number | null;
+    current: number | null;
+    limit: number | null;
+    iso_currency_code: string | null;
+    unofficial_currency_code: string | null;
+  };
+  type: string;
+};
+
+function buildApiUrl(path: string) {
+  const base = process.env.NEXT_PUBLIC_BACKEND_URL ?? "http://localhost:8000";
+  const normalized = base.endsWith("/") ? base : `${base}/`;
+  return `${normalized}${path.replace(/^\//, "")}`;
+}
+
+function formatCurrency(value: number) {
+  return new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency: "USD",
+    maximumFractionDigits: 2,
+  }).format(value);
+}
 
 const tiles = [
   {
@@ -85,38 +114,106 @@ const tiles = [
       </svg>
     ),
   },
-  {
-    title: "Net Worth",
-    description: "Balance assets and liabilities.",
-    href: "/net-worth",
-    icon: (
-      <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none">
-        <path
-          d="M12 3v18"
-          stroke="currentColor"
-          strokeWidth="2"
-          strokeLinecap="round"
-        />
-        <path
-          d="M7 8l5-5 5 5"
-          stroke="currentColor"
-          strokeWidth="2"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        />
-        <path
-          d="M7 16l5 5 5-5"
-          stroke="currentColor"
-          strokeWidth="2"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        />
-      </svg>
-    ),
-  },
 ];
 
 export default function ProtectedHomePage() {
+  const [totalAssets, setTotalAssets] = useState<number | null>(null);
+  const [totalDebts, setTotalDebts] = useState<number | null>(null);
+  const [netWorthError, setNetWorthError] = useState<string | null>(null);
+
+  const netWorth = useMemo(() => {
+    if (totalAssets === null || totalDebts === null) {
+      return null;
+    }
+    return totalAssets - totalDebts;
+  }, [totalAssets, totalDebts]);
+
+  useEffect(() => {
+    let isActive = true;
+
+    const fetchNetWorth = async (userId: string) => {
+      setNetWorthError(null);
+      try {
+        const response = await fetch(
+          buildApiUrl(`api/get-account-balance/?user_id=${encodeURIComponent(userId)}`)
+        );
+
+        if (!response.ok) {
+          const message = await response.text();
+          throw new Error(message || "Failed to load balances");
+        }
+
+        const payload = await response.json();
+        const accounts = (payload.accounts ?? []) as PlaidAccount[];
+
+        const assets = accounts.reduce((sum, account) => {
+          if (account.type === "credit" || account.type === "loan") {
+            return sum;
+          }
+          const current = account.balances?.current;
+          const available = account.balances?.available;
+          const balance = typeof current === "number" ? current : available ?? 0;
+          return sum + balance;
+        }, 0);
+
+        const debts = accounts.reduce((sum, account) => {
+          if (account.type !== "credit" && account.type !== "loan") {
+            return sum;
+          }
+          const current = account.balances?.current;
+          const available = account.balances?.available;
+          const balance = typeof current === "number" ? current : available ?? 0;
+          return sum + balance;
+        }, 0);
+
+        if (!isActive) {
+          return;
+        }
+
+        setTotalAssets(assets);
+        setTotalDebts(debts);
+      } catch (error) {
+        if (!isActive) {
+          return;
+        }
+        setNetWorthError(error instanceof Error ? error.message : "Failed to load balances");
+      }
+    };
+
+    const init = async () => {
+      const { data } = await supabaseBrowser.auth.getUser();
+      const userId = data.user?.id;
+      if (userId) {
+        await fetchNetWorth(userId);
+        return;
+      }
+
+      const { data: listener } = supabaseBrowser.auth.onAuthStateChange(
+        (_event, session) => {
+          const sessionUserId = session?.user?.id;
+          if (sessionUserId) {
+            fetchNetWorth(sessionUserId);
+          }
+        }
+      );
+
+      return () => {
+        listener.subscription.unsubscribe();
+      };
+    };
+
+    const cleanupPromise = init();
+
+    return () => {
+      isActive = false;
+      cleanupPromise.then((cleanup) => {
+        if (cleanup) {
+          cleanup();
+        }
+      });
+    };
+  }, []);
+
   return (
     <div className="mx-auto flex w-full max-w-6xl flex-col gap-8 py-12">
       <div className="space-y-2">
@@ -131,6 +228,38 @@ export default function ProtectedHomePage() {
         </p>
       </div>
       <GlassGrid>
+        <GlassTile
+          title="Net worth"
+          description="Assets minus debts from Plaid."
+          href="/net-worth"
+        >
+          {netWorthError ? (
+            <p className="text-sm text-rose-500">Unable to load balances</p>
+          ) : (
+            <div className="space-y-2 text-sm text-slate-700 dark:text-slate-200">
+              <div className="flex items-center justify-between">
+                <span className="text-xs uppercase tracking-[0.2em] text-slate-500 dark:text-slate-400">
+                  Assets
+                </span>
+                <span className="font-semibold">
+                  {totalAssets === null ? "--" : formatCurrency(totalAssets)}
+                </span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-xs uppercase tracking-[0.2em] text-slate-500 dark:text-slate-400">
+                  Debts
+                </span>
+                <span className="font-semibold">
+                  {totalDebts === null ? "--" : formatCurrency(totalDebts)}
+                </span>
+              </div>
+              <div className="flex items-center justify-between border-t border-white/20 pt-2 text-base font-semibold text-slate-900 dark:border-white/10 dark:text-white">
+                <span>Net</span>
+                <span>{netWorth === null ? "--" : formatCurrency(netWorth)}</span>
+              </div>
+            </div>
+          )}
+        </GlassTile>
         {tiles.map((tile) => (
           <GlassTile key={tile.title} {...tile} />
         ))}
