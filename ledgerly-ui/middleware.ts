@@ -17,20 +17,19 @@ export async function middleware(request: NextRequest) {
 
   const supabase = createServerClient(supabaseUrl, supabaseAnonKey, {
     cookies: {
-      get(name) {
+      get(name: string) {
         return request.cookies.get(name)?.value;
       },
-      set(name, value, options) {
-        response.cookies.set({ name, value, ...options });
+      set(name: string, value: string, options: Record<string, unknown>) {
+        response.cookies.set({ name, value, ...(options as any) });
       },
-      remove(name, options) {
-        response.cookies.set({ name, value: "", ...options });
+      remove(name: string, options: Record<string, unknown>) {
+        response.cookies.set({ name, value: "", ...(options as any) });
       },
     },
   });
 
   await supabase.auth.getUser();
-
   return response;
 }
 
