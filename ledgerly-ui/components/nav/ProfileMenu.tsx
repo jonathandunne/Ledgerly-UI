@@ -67,7 +67,11 @@ export function ProfileMenu({ email }: ProfileMenuProps) {
         const response = await fetch(`${apiBase}api/exchange-public-token/`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ user_id: userId, public_token }),
+          body: JSON.stringify({
+            user_id: userId,
+            public_token,
+            institution_id: metadata.institution?.institution_id,
+          }),
         });
         if (!response.ok) {
           const text = await response.text();
