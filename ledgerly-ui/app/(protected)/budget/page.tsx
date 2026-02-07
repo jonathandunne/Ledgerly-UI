@@ -207,7 +207,7 @@ export default function BudgetPage() {
                     Budgeting
                 </p>
                 <h1 className="text-3xl font-semibold text-slate-900 dark:text-white">
-                    Your Monthly Budget
+                    Saving Goals
                 </h1>
                 <p className="max-w-2xl text-sm text-slate-600 dark:text-slate-300">
                     Set limits and track your spending goals here.
