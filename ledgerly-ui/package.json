@@ -12,8 +12,10 @@
     "@supabase/ssr": "^0.5.2",
     "@supabase/supabase-js": "^2.49.1",
     "next": "16.1.6",
+    "plaid": "^41.1.0",
     "react": "19.2.3",
-    "react-dom": "19.2.3"
+    "react-dom": "19.2.3",
+    "react-plaid-link": "^4.1.1"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",

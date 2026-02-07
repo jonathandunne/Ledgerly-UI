@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabaseBrowser } from "@/lib/supabase/client";
+import { usePlaidLink } from "react-plaid-link";
 
 type ProfileMenuProps = {
   email?: string | null;
@@ -10,8 +11,60 @@ type ProfileMenuProps = {
 
 export function ProfileMenu({ email }: ProfileMenuProps) {
   const [open, setOpen] = useState(false);
+  const [plaidConnected, setPlaidConnected] = useState(false);
+  const [linkToken, setLinkToken] = useState<string | null>(null);
   const menuRef = useRef<HTMLDivElement | null>(null);
   const router = useRouter();
+
+  // Fetch link token from your backend when component mounts
+  useEffect(() => {
+    const fetchLinkToken = async () => {
+      try {
+        const response = await fetch("/api/plaid/create-link-token");
+        if (!response.ok) {
+          const text = await response.text();
+          console.error("create-link-token returned non-OK response:", response.status, text);
+          return;
+        }
+        const data = await response.json();
+        console.log("create-link-token response:", data);
+        setLinkToken(data.link_token ?? null);
+      } catch (error) {
+        console.error("Error fetching link token:", error);
+      }
+    };
+    fetchLinkToken();
+  }, []);
+
+  // Plaid Link hook
+  const { open: openPlaid, ready } = usePlaidLink({
+    token: linkToken,
+    onSuccess: async (public_token, metadata) => {
+      try {
+        // Send public_token to your backend to exchange for access_token
+        const response = await fetch("/api/plaid/exchange-token", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ public_token }),
+        });
+        if (!response.ok) {
+          const text = await response.text();
+          console.error("exchange-token returned non-OK response:", response.status, text);
+          return;
+        }
+        const data = await response.json();
+        console.log("Plaid connected successfully!", data);
+        setPlaidConnected(true);
+      } catch (error) {
+        console.error("Error exchanging token:", error);
+      }
+    },
+  });
+
+  // Debug: log when linkToken or ready changes
+  useEffect(() => {
+    console.log("Plaid linkToken:", linkToken, "ready:", ready);
+  }, [linkToken, ready]);
 
   useEffect(() => {
     const handleClick = (event: MouseEvent) => {
@@ -32,6 +85,19 @@ export function ProfileMenu({ email }: ProfileMenuProps) {
     router.refresh();
   };
 
+  const handleConnectPlaid = () => {
+    console.log("handleConnectPlaid called; ready=", ready, "linkToken=", linkToken);
+    if (!linkToken) {
+      console.error("No link token available; cannot open Plaid Link");
+      return;
+    }
+    if (ready) {
+      openPlaid(); // Opens Plaid Link modal
+    } else {
+      console.log("Plaid Link not ready yet...");
+    }
+  };
+
   return (
     <div className="relative" ref={menuRef}>
       <button
@@ -49,7 +115,31 @@ export function ProfileMenu({ email }: ProfileMenuProps) {
 
       {open ? (
         <div className="absolute right-0 z-20 mt-3 w-64 rounded-2xl border border-white/20 bg-white/60 p-4 shadow-[0_30px_80px_-40px_rgba(15,23,42,0.7)] backdrop-blur-2xl dark:border-white/10 dark:bg-slate-950/60">
-          <div className="mt-2 border-t border-white/30 pt-3 dark:border-white/10">
+          {/* Bank Account Section */}
+          <div className="space-y-2">
+            <p className="text-xs font-medium text-slate-600 dark:text-slate-400">
+              Bank Account
+            </p>
+            {plaidConnected ? (
+              <div className="rounded-xl border border-green-500/30 bg-green-50/50 px-3 py-2 dark:bg-green-500/10">
+                <p className="text-xs font-semibold text-green-700 dark:text-green-400">
+                  ✓ Bank Connected
+                </p>
+              </div>
+            ) : (
+              <button
+                type="button"
+                onClick={handleConnectPlaid}
+                disabled={!ready}
+                className="w-full rounded-xl border border-sky-500/30 bg-sky-50/70 px-3 py-2 text-sm font-semibold text-sky-700 transition hover:bg-sky-100/90 disabled:opacity-50 dark:border-sky-400/20 dark:bg-sky-500/10 dark:text-sky-300 dark:hover:bg-sky-500/20"
+              >
+                + Connect Bank Account
+              </button>
+            )}
+          </div>
+
+          {/* Logout Section */}
+          <div className="mt-3 border-t border-white/30 pt-3 dark:border-white/10">
             <button
               type="button"
               onClick={handleLogout}
