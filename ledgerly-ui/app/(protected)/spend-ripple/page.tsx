@@ -46,7 +46,7 @@ export default function SpendRipplePage() {
             <div className="flex items-center justify-between">
               <span>Estimated rate</span>
               <span className="font-semibold text-slate-900 dark:text-white">
-                1 XRP = $0.62
+                1 XRP = $1.43
               </span>
             </div>
             <div className="flex items-center justify-between">
