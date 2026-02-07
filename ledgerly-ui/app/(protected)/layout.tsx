@@ -20,7 +20,7 @@ export default async function ProtectedLayout({
     <GlassBackground>
       <div className="flex min-h-screen flex-col">
         <header className="flex items-center justify-between px-6 py-6 md:px-12">
-          <div className="flex items-center gap-3">
+          <a href="/" className="flex items-center gap-3">
             <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-sky-500/20 text-sky-800 shadow-inner dark:text-sky-100">
               <span className="text-sm font-semibold">L</span>
             </div>
@@ -32,7 +32,7 @@ export default async function ProtectedLayout({
                 Liquid glass finance
               </p>
             </div>
-          </div>
+          </a>
           <ProfileMenu email={data.user.email} />
         </header>
         <main className="flex-1 px-6 pb-16 md:px-12">{children}</main>

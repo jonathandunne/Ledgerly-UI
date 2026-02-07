@@ -3,7 +3,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabaseBrowser } from "@/lib/supabase/client";
-import { useTheme } from "@/components/theme/ThemeProvider";
 
 type ProfileMenuProps = {
   email?: string | null;
@@ -13,7 +12,6 @@ export function ProfileMenu({ email }: ProfileMenuProps) {
   const [open, setOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement | null>(null);
   const router = useRouter();
-  const { theme, toggleTheme } = useTheme();
 
   useEffect(() => {
     const handleClick = (event: MouseEvent) => {
@@ -51,22 +49,7 @@ export function ProfileMenu({ email }: ProfileMenuProps) {
 
       {open ? (
         <div className="absolute right-0 z-20 mt-3 w-64 rounded-2xl border border-white/20 bg-white/60 p-4 shadow-[0_30px_80px_-40px_rgba(15,23,42,0.7)] backdrop-blur-2xl dark:border-white/10 dark:bg-slate-950/60">
-          <div className="space-y-2">
-            <p className="text-xs uppercase tracking-[0.2em] text-slate-500 dark:text-slate-400">
-              Settings
-            </p>
-            <button
-              type="button"
-              onClick={toggleTheme}
-              className="flex w-full items-center justify-between rounded-xl border border-white/20 bg-white/60 px-3 py-2 text-sm font-medium text-slate-700 transition hover:bg-white/80 dark:border-white/10 dark:bg-white/5 dark:text-slate-100"
-            >
-              <span>Theme</span>
-              <span className="text-xs text-slate-500 dark:text-slate-300">
-                {theme === "dark" ? "Dark" : "Light"}
-              </span>
-            </button>
-          </div>
-          <div className="mt-4 border-t border-white/30 pt-3 dark:border-white/10">
+          <div className="mt-2 border-t border-white/30 pt-3 dark:border-white/10">
             <button
               type="button"
               onClick={handleLogout}

@@ -3,28 +3,6 @@ import { GlassTile } from "@/components/glass/GlassTile";
 
 const tiles = [
   {
-    title: "Dashboard",
-    description: "Overview of your financial signals.",
-    href: "/dashboard",
-    icon: (
-      <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none">
-        <path
-          d="M4 13.5L9 9l4 3 7-7"
-          stroke="currentColor"
-          strokeWidth="2"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        />
-        <path
-          d="M3.5 19.5h17"
-          stroke="currentColor"
-          strokeWidth="2"
-          strokeLinecap="round"
-        />
-      </svg>
-    ),
-  },
-  {
     title: "Credit Score",
     description: "Track score movement and impacts.",
     href: "/credit-score",
@@ -37,21 +15,6 @@ const tiles = [
           strokeWidth="2"
           strokeLinecap="round"
           strokeLinejoin="round"
-        />
-      </svg>
-    ),
-  },
-  {
-    title: "Total Assets",
-    description: "Unified view of your holdings.",
-    href: "/total-assets",
-    icon: (
-      <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none">
-        <path
-          d="M4 7h16M4 12h16M4 17h10"
-          stroke="currentColor"
-          strokeWidth="2"
-          strokeLinecap="round"
         />
       </svg>
     ),
@@ -92,6 +55,18 @@ const tiles = [
           strokeWidth="2"
           strokeLinecap="round"
         />
+      </svg>
+    ),
+  },
+  {
+    title: "Spend Ripple",
+    description: "Convert XRP to cash seamlessly.",
+    href: "/spend-ripple",
+    icon: (
+      <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none">
+        <circle cx="12" cy="12" r="3" stroke="currentColor" strokeWidth="2" />
+        <circle cx="12" cy="12" r="7" stroke="currentColor" strokeWidth="2" />
+        <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2" />
       </svg>
     ),
   },
