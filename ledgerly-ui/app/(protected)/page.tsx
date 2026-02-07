@@ -1,5 +1,7 @@
 "use client";
 
+import Link from "next/link";
+
 import { useMemo } from "react";
 import { GlassGrid } from "@/components/glass/GlassGrid";
 import { GlassTile } from "@/components/glass/GlassTile";
@@ -70,18 +72,7 @@ const tiles = [
       </svg>
     ),
   },
-  {
-    title: "Spend Ripple",
-    description: "Convert XRP to cash seamlessly.",
-    href: "/spend-ripple",
-    icon: (
-      <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none">
-        <circle cx="12" cy="12" r="3" stroke="currentColor" strokeWidth="2" />
-        <circle cx="12" cy="12" r="7" stroke="currentColor" strokeWidth="2" />
-        <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2" />
-      </svg>
-    ),
-  },
+
   {
     title: "Subscriptions",
     description: "Monitor recurring commitments.",
@@ -157,11 +148,47 @@ export default function ProtectedHomePage() {
               </div>
             </div>
           )}
+
+        </GlassTile>
+        <GlassTile
+          title="Set Your Budget"
+          description="Manage your spending limits."
+        >
+          <div className="flex items-center gap-2 mt-4">
+            <div className="relative flex-1">
+              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-semibold text-slate-500 dark:text-slate-400">
+                USD
+              </span>
+              <input
+                type="number"
+                className="w-full rounded-xl border border-white/20 bg-white/50 py-2 pl-10 pr-3 text-sm text-slate-900 shadow-inner outline-none focus:border-sky-400/50 focus:ring-2 focus:ring-sky-400/20 dark:border-white/10 dark:bg-black/20 dark:text-white"
+                placeholder="0.00"
+              />
+            </div>
+            <Link
+              href="/budget"
+              className="flex h-9 w-9 items-center justify-center rounded-xl bg-sky-500/90 text-white shadow-lg shadow-sky-500/20 transition hover:bg-sky-500 hover:scale-105 active:scale-95 dark:bg-sky-500/80 dark:hover:bg-sky-400"
+            >
+              <svg
+                viewBox="0 0 24 24"
+                className="h-5 w-5"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+              >
+                <path
+                  d="M5 12h14M12 5l7 7-7 7"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+              </svg>
+            </Link>
+          </div>
         </GlassTile>
         {tiles.map((tile) => (
           <GlassTile key={tile.title} {...tile} />
         ))}
       </GlassGrid>
-    </div>
+    </div >
   );
 }
