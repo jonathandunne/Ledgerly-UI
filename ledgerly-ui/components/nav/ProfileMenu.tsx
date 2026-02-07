@@ -9,8 +9,15 @@ type ProfileMenuProps = {
   email?: string | null;
 };
 
+type ConnectedInstitution = {
+  institution_name: string;
+  institution_id: string;
+  is_connected: boolean;
+};
+
 export function ProfileMenu({ email }: ProfileMenuProps) {
   const [open, setOpen] = useState(false);
+  const [institutions, setInstitutions] = useState<ConnectedInstitution[]>([]);
   const [plaidConnected, setPlaidConnected] = useState(false);
   const [linkToken, setLinkToken] = useState<string | null>(null);
   const [plaidOpen, setPlaidOpen] = useState(false);
@@ -19,7 +26,7 @@ export function ProfileMenu({ email }: ProfileMenuProps) {
   const router = useRouter();
   const apiBase = process.env.NEXT_PUBLIC_BACKEND_URL ?? "http://localhost:8000/";
 
-  // Fetch current user and link token from backend when component mounts
+  // Fetch current user and link token from backend when component mounts or email changes
   useEffect(() => {
     const fetchUserAndToken = async () => {
       try {
@@ -34,6 +41,20 @@ export function ProfileMenu({ email }: ProfileMenuProps) {
           console.error("No user found; cannot create link token");
           return;
         }
+
+        // Fetch connected institutions
+        const instResponse = await fetch(`${apiBase}api/connected-institutions/?user_id=${user.id}`, {
+          method: "GET",
+          headers: { "Content-Type": "application/json" },
+        });
+        if (instResponse.ok) {
+          const instData = await instResponse.json();
+          setInstitutions(instData);
+          if (instData.length > 0) {
+            setPlaidConnected(true);
+          }
+        }
+
         const response = await fetch(`${apiBase}api/create-link-token/`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -48,11 +69,11 @@ export function ProfileMenu({ email }: ProfileMenuProps) {
         console.log("create-link-token response:", data);
         setLinkToken(data.link_token ?? null);
       } catch (error) {
-        console.error("Error fetching link token:", error);
+        console.error("Error fetching data:", error);
       }
     };
     fetchUserAndToken();
-  }, []);
+  }, [email]);
 
   // Plaid Link hook
   const { open: openPlaid, ready } = usePlaidLink({
@@ -102,6 +123,14 @@ export function ProfileMenu({ email }: ProfileMenuProps) {
         console.log("Plaid connected successfully!", data);
         setPlaidConnected(true);
         setPlaidOpen(false);
+
+        // Optimistically update the list of connected institutions
+        const newInst: ConnectedInstitution = {
+          institution_name: metadata.institution?.name ?? "Unknown Bank",
+          institution_id: metadata.institution?.institution_id ?? "unknown",
+          is_connected: true,
+        };
+        setInstitutions((prev) => [...prev, newInst]);
       } catch (error) {
         console.error("Error exchanging token:", error);
       }
@@ -181,11 +210,26 @@ export function ProfileMenu({ email }: ProfileMenuProps) {
             <p className="text-xs font-medium text-slate-600 dark:text-slate-400">
               Bank Account
             </p>
-            {plaidConnected ? (
-              <div className="rounded-xl border border-green-500/30 bg-green-50/50 px-3 py-2 dark:bg-green-500/10">
-                <p className="text-xs font-semibold text-green-700 dark:text-green-400">
-                  ✓ Bank Connected
-                </p>
+            {institutions.length > 0 ? (
+              <div className="space-y-2">
+                {institutions.map((inst) => (
+                  <div
+                    key={inst.institution_id}
+                    className="rounded-xl border border-green-500/30 bg-green-50/50 px-3 py-2 dark:bg-green-500/10"
+                  >
+                    <p className="text-xs font-semibold text-green-700 dark:text-green-400">
+                      ✓ {inst.institution_name} {inst.is_connected ? "Connected" : ""}
+                    </p>
+                  </div>
+                ))}
+                <button
+                  type="button"
+                  onClick={handleConnectPlaid}
+                  disabled={!ready}
+                  className="w-full mt-2 rounded-xl border border-sky-500/30 bg-sky-50/70 px-3 py-2 text-sm font-semibold text-sky-700 transition hover:bg-sky-100/90 disabled:opacity-50 dark:border-sky-400/20 dark:bg-sky-500/10 dark:text-sky-300 dark:hover:bg-sky-500/20"
+                >
+                  + Connect Another Bank
+                </button>
               </div>
             ) : (
               <button
