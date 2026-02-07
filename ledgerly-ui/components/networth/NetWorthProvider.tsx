@@ -11,6 +11,8 @@ import {
 import { supabaseBrowser } from "@/lib/supabase/client";
 
 type PlaidAccount = {
+  name?: string | null;
+  official_name?: string | null;
   balances: {
     available: number | null;
     current: number | null;
@@ -19,12 +21,21 @@ type PlaidAccount = {
     unofficial_currency_code: string | null;
   };
   type: string;
+  institution_name?: string | null;
+};
+
+type AccountRow = {
+  institution: string;
+  account: string;
+  value: number;
 };
 
 type NetWorthState = {
   totalAssets: number | null;
   totalDebts: number | null;
   netWorth: number | null;
+  assets: AccountRow[];
+  debts: AccountRow[];
   error: string | null;
   loading: boolean;
   refresh: () => Promise<void>;
@@ -38,9 +49,39 @@ function buildApiUrl(path: string) {
   return `${normalized}${path.replace(/^\//, "")}`;
 }
 
+function getBalance(account: PlaidAccount) {
+  if (typeof account.balances.current === "number") {
+    return account.balances.current;
+  }
+  if (typeof account.balances.available === "number") {
+    return account.balances.available;
+  }
+  return 0;
+}
+
+function toRow(account: PlaidAccount, fallbackInstitution: string): AccountRow {
+  const institution = account.institution_name ?? fallbackInstitution;
+  const accountName = account.name ?? account.official_name ?? "Unknown account";
+  return {
+    institution,
+    account: accountName,
+    value: getBalance(account),
+  };
+}
+
+function sortRows(a: AccountRow, b: AccountRow) {
+  const instCompare = a.institution.localeCompare(b.institution);
+  if (instCompare !== 0) {
+    return instCompare;
+  }
+  return a.account.localeCompare(b.account);
+}
+
 export function NetWorthProvider({ children }: { children: ReactNode }) {
   const [totalAssets, setTotalAssets] = useState<number | null>(null);
   const [totalDebts, setTotalDebts] = useState<number | null>(null);
+  const [assets, setAssets] = useState<AccountRow[]>([]);
+  const [debts, setDebts] = useState<AccountRow[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -73,6 +114,10 @@ export function NetWorthProvider({ children }: { children: ReactNode }) {
 
       const payload = await response.json();
       const accounts = (payload.accounts ?? []) as PlaidAccount[];
+      const fallbackInstitution = payload.item?.institution_name ?? "Unknown institution";
+
+      const assetRows: AccountRow[] = [];
+      const debtRows: AccountRow[] = [];
 
       const assets = accounts.reduce((sum, account) => {
         if (account.type === "credit" || account.type === "loan") {
@@ -94,8 +139,22 @@ export function NetWorthProvider({ children }: { children: ReactNode }) {
         return sum + balance;
       }, 0);
 
+      accounts.forEach((account) => {
+        const row = toRow(account, fallbackInstitution);
+        if (account.type === "credit" || account.type === "loan") {
+          debtRows.push(row);
+        } else {
+          assetRows.push(row);
+        }
+      });
+
+      assetRows.sort(sortRows);
+      debtRows.sort(sortRows);
+
       setTotalAssets(assets);
       setTotalDebts(debts);
+      setAssets(assetRows);
+      setDebts(debtRows);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to load balances");
     } finally {
@@ -144,11 +203,13 @@ export function NetWorthProvider({ children }: { children: ReactNode }) {
       totalAssets,
       totalDebts,
       netWorth,
+      assets,
+      debts,
       error,
       loading,
       refresh: fetchNetWorth,
     }),
-    [totalAssets, totalDebts, netWorth, error, loading]
+    [totalAssets, totalDebts, netWorth, assets, debts, error, loading]
   );
 
   return (
