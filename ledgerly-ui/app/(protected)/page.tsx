@@ -1,26 +1,9 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo } from "react";
 import { GlassGrid } from "@/components/glass/GlassGrid";
 import { GlassTile } from "@/components/glass/GlassTile";
-import { supabaseBrowser } from "@/lib/supabase/client";
-
-type PlaidAccount = {
-  balances: {
-    available: number | null;
-    current: number | null;
-    limit: number | null;
-    iso_currency_code: string | null;
-    unofficial_currency_code: string | null;
-  };
-  type: string;
-};
-
-function buildApiUrl(path: string) {
-  const base = process.env.NEXT_PUBLIC_BACKEND_URL ?? "http://localhost:8000";
-  const normalized = base.endsWith("/") ? base : `${base}/`;
-  return `${normalized}${path.replace(/^\//, "")}`;
-}
+import { useNetWorth } from "@/components/networth/NetWorthProvider";
 
 function formatCurrency(value: number) {
   return new Intl.NumberFormat("en-US", {
@@ -117,102 +100,17 @@ const tiles = [
 ];
 
 export default function ProtectedHomePage() {
-  const [totalAssets, setTotalAssets] = useState<number | null>(null);
-  const [totalDebts, setTotalDebts] = useState<number | null>(null);
-  const [netWorthError, setNetWorthError] = useState<string | null>(null);
+  const { totalAssets, totalDebts, netWorth, error, loading } = useNetWorth();
 
-  const netWorth = useMemo(() => {
-    if (totalAssets === null || totalDebts === null) {
-      return null;
+  const netWorthStatus = useMemo(() => {
+    if (loading) {
+      return "--";
     }
-    return totalAssets - totalDebts;
-  }, [totalAssets, totalDebts]);
-
-  useEffect(() => {
-    let isActive = true;
-
-    const fetchNetWorth = async (userId: string) => {
-      setNetWorthError(null);
-      try {
-        const response = await fetch(
-          buildApiUrl(`api/get-account-balance/?user_id=${encodeURIComponent(userId)}`)
-        );
-
-        if (!response.ok) {
-          const message = await response.text();
-          throw new Error(message || "Failed to load balances");
-        }
-
-        const payload = await response.json();
-        const accounts = (payload.accounts ?? []) as PlaidAccount[];
-
-        const assets = accounts.reduce((sum, account) => {
-          if (account.type === "credit" || account.type === "loan") {
-            return sum;
-          }
-          const current = account.balances?.current;
-          const available = account.balances?.available;
-          const balance = typeof current === "number" ? current : available ?? 0;
-          return sum + balance;
-        }, 0);
-
-        const debts = accounts.reduce((sum, account) => {
-          if (account.type !== "credit" && account.type !== "loan") {
-            return sum;
-          }
-          const current = account.balances?.current;
-          const available = account.balances?.available;
-          const balance = typeof current === "number" ? current : available ?? 0;
-          return sum + balance;
-        }, 0);
-
-        if (!isActive) {
-          return;
-        }
-
-        setTotalAssets(assets);
-        setTotalDebts(debts);
-      } catch (error) {
-        if (!isActive) {
-          return;
-        }
-        setNetWorthError(error instanceof Error ? error.message : "Failed to load balances");
-      }
-    };
-
-    const init = async () => {
-      const { data } = await supabaseBrowser.auth.getUser();
-      const userId = data.user?.id;
-      if (userId) {
-        await fetchNetWorth(userId);
-        return;
-      }
-
-      const { data: listener } = supabaseBrowser.auth.onAuthStateChange(
-        (_event, session) => {
-          const sessionUserId = session?.user?.id;
-          if (sessionUserId) {
-            fetchNetWorth(sessionUserId);
-          }
-        }
-      );
-
-      return () => {
-        listener.subscription.unsubscribe();
-      };
-    };
-
-    const cleanupPromise = init();
-
-    return () => {
-      isActive = false;
-      cleanupPromise.then((cleanup) => {
-        if (cleanup) {
-          cleanup();
-        }
-      });
-    };
-  }, []);
+    if (netWorth === null) {
+      return "--";
+    }
+    return formatCurrency(netWorth);
+  }, [loading, netWorth]);
 
   return (
     <div className="mx-auto flex w-full max-w-6xl flex-col gap-8 py-12">
@@ -233,7 +131,7 @@ export default function ProtectedHomePage() {
           description="Assets minus debts from Plaid."
           href="/net-worth"
         >
-          {netWorthError ? (
+          {error ? (
             <p className="text-sm text-rose-500">Unable to load balances</p>
           ) : (
             <div className="space-y-2 text-sm text-slate-700 dark:text-slate-200">
@@ -255,7 +153,7 @@ export default function ProtectedHomePage() {
               </div>
               <div className="flex items-center justify-between border-t border-white/20 pt-2 text-base font-semibold text-slate-900 dark:border-white/10 dark:text-white">
                 <span>Net</span>
-                <span>{netWorth === null ? "--" : formatCurrency(netWorth)}</span>
+                <span>{netWorthStatus}</span>
               </div>
             </div>
           )}
