@@ -21,7 +21,7 @@ function BudgetForm() {
             if (id) {
                 setLoading(true);
                 const { data, error } = await supabaseBrowser
-                    .from("user_budgets")
+                    .from("user_goals")
                     .select("*")
                     .eq("id", id)
                     .single();
@@ -66,13 +66,13 @@ function BudgetForm() {
 
             if (id) {
                 const { error: updateError } = await supabaseBrowser
-                    .from("user_budgets")
+                    .from("user_goals")
                     .update(payload)
                     .eq("id", id);
                 error = updateError;
             } else {
                 const { error: insertError } = await supabaseBrowser
-                    .from("user_budgets")
+                    .from("user_goals")
                     .insert([payload]);
                 error = insertError;
             }

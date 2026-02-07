@@ -7,6 +7,11 @@ import { GlassGrid } from "@/components/glass/GlassGrid";
 import { GlassTile } from "@/components/glass/GlassTile";
 import { useNetWorth } from "@/components/networth/NetWorthProvider";
 import { useCreditScore } from "@/components/credit/CreditScoreProvider";
+import {
+  getStreamLabel,
+  useUpcomingPayments,
+} from "@/components/payments/useUpcomingPayments";
+import { useSubscriptions } from "@/components/subscriptions/useSubscriptions";
 import { useSpending } from "@/components/spending/SpendingProvider";
 import { TRANSACTION_CATEGORIES } from "@/constants/categories";
 
@@ -26,30 +31,6 @@ function formatCurrency(value: number) {
 
 const tiles = [
   {
-    title: "Upcoming Payments",
-    description: "Stay ahead of due dates.",
-    href: "/upcoming-payments",
-    icon: (
-      <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none">
-        <path
-          d="M7 4v4M17 4v4M4 9h16"
-          stroke="currentColor"
-          strokeWidth="2"
-          strokeLinecap="round"
-        />
-        <rect
-          x="4"
-          y="9"
-          width="16"
-          height="11"
-          rx="2"
-          stroke="currentColor"
-          strokeWidth="2"
-        />
-      </svg>
-    ),
-  },
-  {
     title: "Spending",
     description: "Insights into your cash flow.",
     href: "/spending",
@@ -61,21 +42,23 @@ const tiles = [
     custom: true,
   },
 
-  {
-    title: "Subscriptions",
-    description: "Monitor recurring commitments.",
-    href: "/subscriptions",
-    icon: (
-      <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" aria-hidden>
-        <path d="M21 10c0-1.1-.9-2-2-2h-6l-2-3-2 3H5a2 2 0 000 4h14a2 2 0 002-2z" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-      </svg>
-    ),
-  },
 ];
 
 export default function ProtectedHomePage() {
   const { totalAssets, totalDebts, netWorth, error, loading } = useNetWorth();
   const { score, rating, error: creditError, loading: creditLoading } = useCreditScore();
+  const {
+    items: upcomingPayments,
+    totalUpcoming,
+    error: upcomingError,
+    loading: upcomingLoading,
+  } = useUpcomingPayments();
+  const {
+    items: subscriptions,
+    monthlyTotal,
+    error: subscriptionsError,
+    loading: subscriptionsLoading,
+  } = useSubscriptions();
   const { transactions, selectedCategories } = useSpending();
   const [budgetInput, setBudgetInput] = useState("");
   const [budgets, setBudgets] = useState<Budget[]>([]);
@@ -85,7 +68,7 @@ export default function ProtectedHomePage() {
       const { data: { user } } = await supabaseBrowser.auth.getUser();
       if (user) {
         const { data } = await supabaseBrowser
-          .from("user_budgets")
+          .from("user_goals")
           .select("id, goal_name, target_amount")
           .eq("user_id", user.id);
         if (data) setBudgets(data);
@@ -157,6 +140,18 @@ export default function ProtectedHomePage() {
     };
   }, [transactions, selectedCategories, latestTransaction]);
 
+  const nextUpcoming = useMemo(() => {
+    const withDate = upcomingPayments.filter((stream) => stream.predicted_next_date);
+    if (withDate.length === 0) {
+      return null;
+    }
+    return [...withDate].sort((a, b) => {
+      const aDate = new Date(a.predicted_next_date as string).getTime();
+      const bDate = new Date(b.predicted_next_date as string).getTime();
+      return aDate - bDate;
+    })[0];
+  }, [upcomingPayments]);
+
   return (
     <div className="mx-auto flex w-full max-w-6xl flex-col gap-8 py-12">
       <div className="space-y-2">
@@ -211,6 +206,55 @@ export default function ProtectedHomePage() {
           )}
         </GlassTile>
         <GlassTile
+          title="Upcoming payments"
+          description="Total value of scheduled payments."
+          href="/upcoming-payments"
+          icon={
+            <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" aria-hidden>
+              <path
+                d="M7 4v4M17 4v4M4 9h16"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+              />
+              <rect
+                x="4"
+                y="9"
+                width="16"
+                height="11"
+                rx="2"
+                stroke="currentColor"
+                strokeWidth="2"
+              />
+            </svg>
+          }
+        >
+          {upcomingError ? (
+            <p className="text-sm text-rose-500">Unable to load payments</p>
+          ) : (
+            <div className="space-y-2 text-sm text-slate-700 dark:text-slate-200">
+              <div className="flex items-center justify-between">
+                <span className="text-xs uppercase tracking-[0.2em] text-slate-500 dark:text-slate-400">
+                  Total
+                </span>
+                <span className="font-semibold text-slate-900 dark:text-white">
+                  {upcomingLoading ? "--" : formatCurrency(totalUpcoming)}
+                </span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-xs uppercase tracking-[0.2em] text-slate-500 dark:text-slate-400">
+                  Next
+                </span>
+                <span className="font-semibold">
+                  {upcomingLoading || !nextUpcoming?.predicted_next_date
+                    ? "--"
+                    : nextUpcoming.predicted_next_date}
+                </span>
+              </div>
+            </div>
+          )}
+        </GlassTile>
+        <GlassTile
           title="Net worth"
           description="Assets minus debts from Plaid."
           href="/net-worth"
@@ -248,6 +292,47 @@ export default function ProtectedHomePage() {
             </div>
           )}
 
+        </GlassTile>
+        <GlassTile
+          title="Subscriptions"
+          description="Monthly recurring bills."
+          href="/subscriptions"
+          icon={
+            <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" aria-hidden>
+              <path
+                d="M21 10c0-1.1-.9-2-2-2h-6l-2-3-2 3H5a2 2 0 000 4h14a2 2 0 002-2z"
+                stroke="currentColor"
+                strokeWidth="1.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            </svg>
+          }
+        >
+          {subscriptionsError ? (
+            <p className="text-sm text-rose-500">Unable to load subscriptions</p>
+          ) : (
+            <div className="space-y-2 text-sm text-slate-700 dark:text-slate-200">
+              <div className="flex items-center justify-between">
+                <span className="text-xs uppercase tracking-[0.2em] text-slate-500 dark:text-slate-400">
+                  Monthly total
+                </span>
+                <span className="font-semibold text-slate-900 dark:text-white">
+                  {subscriptionsLoading ? "--" : formatCurrency(monthlyTotal)}
+                </span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-xs uppercase tracking-[0.2em] text-slate-500 dark:text-slate-400">
+                  Top
+                </span>
+                <span className="font-semibold">
+                  {subscriptionsLoading || subscriptions.length === 0
+                    ? "--"
+                    : getStreamLabel(subscriptions[0])}
+                </span>
+              </div>
+            </div>
+          )}
         </GlassTile>
         <GlassTile
           title="Saving Goals"
