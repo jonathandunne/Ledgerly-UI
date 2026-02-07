@@ -64,13 +64,8 @@ const tiles = [
     description: "Insights into your cash flow.",
     href: "/spending",
     icon: (
-      <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none">
-        <path
-          d="M4 7h16M7 12h10M9 17h6"
-          stroke="currentColor"
-          strokeWidth="2"
-          strokeLinecap="round"
-        />
+      <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" aria-hidden>
+        <path d="M3 17l6-6 4 4 8-8" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
       </svg>
     ),
     custom: true,
@@ -81,13 +76,8 @@ const tiles = [
     description: "Monitor recurring commitments.",
     href: "/subscriptions",
     icon: (
-      <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none">
-        <path
-          d="M5 6h14M6 10h12M7 14h10M8 18h8"
-          stroke="currentColor"
-          strokeWidth="2"
-          strokeLinecap="round"
-        />
+      <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" aria-hidden>
+        <path d="M21 10c0-1.1-.9-2-2-2h-6l-2-3-2 3H5a2 2 0 000 4h14a2 2 0 002-2z" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
       </svg>
     ),
   },
@@ -178,6 +168,12 @@ export default function ProtectedHomePage() {
           title="Net worth"
           description="Assets minus debts from Plaid."
           href="/net-worth"
+          icon={
+            <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" aria-hidden>
+              <path d="M12 1v22" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+              <path d="M17 5H9a4 4 0 100 8h6a4 4 0 010 8H7" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+          }
         >
           {error ? (
             <p className="text-sm text-rose-500">Unable to load balances</p>
@@ -210,6 +206,12 @@ export default function ProtectedHomePage() {
         <GlassTile
           title="Set Your Budget"
           description="Manage your spending limits."
+          icon={
+            <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" aria-hidden>
+              <circle cx="12" cy="12" r="8" stroke="currentColor" strokeWidth="2" />
+              <path d="M12 8v8M8 12h8" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+            </svg>
+          }
         >
           <div className="flex items-center gap-2 mt-4">
             <div className="relative flex-1">
@@ -247,13 +249,8 @@ export default function ProtectedHomePage() {
           description="Insights into your cash flow."
           href="/spending"
           icon={
-            <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none">
-              <path
-                d="M4 7h16M7 12h10M9 17h6"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-              />
+            <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" aria-hidden>
+              <path d="M3 12h3l3-8 4 16 3-8h4" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
             </svg>
           }
         >
